@@ -12,8 +12,9 @@ Static binary, runs on any distro, x86_64 and aarch64.
 ## Install
 
 ```sh
-curl -fLo pb https://github.com/qwarwin4/pb/releases/download/v1.0.0/pb-1.0.0-$(uname -m)
-chmod +x pb && sudo ./pb install
+git clone --depth 1 https://github.com/Qwarwin4/pb
+cd pb
+./pb-ctl.sh
 ```
 
 Or use a package: `apt install ./pb_1.0.0_amd64.deb`, `dnf install ./pb-1.0.0-1.x86_64.rpm`,
