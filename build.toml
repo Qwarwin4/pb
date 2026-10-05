@@ -1,0 +1,7 @@
+name        = "pb"
+version     = "1.0.0"
+description = "Builds .deb, .rpm, .AppImage and PKGBUILD from one config"
+maintainer  = "Qwarwin4 <qwarwin@gmail.com>"
+license     = "GPL-3.0-or-later"
+url         = "https://github.com/qwarwin4/pb"
+binary      = "pb"

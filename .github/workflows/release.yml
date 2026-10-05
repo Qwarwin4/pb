@@ -1,0 +1,172 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-22.04
+          - arch: aarch64
+            runner: ubuntu-22.04-arm
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            sed -i "s/PB_VERSION = \".*\"/PB_VERSION = \"$VERSION\"/" src/version.hpp
+            sed -i "s/^version .*/version     = \"$VERSION\"/" build.toml
+          else
+            VERSION=$(sed -n 's/^version *= *"\(.*\)"/\1/p' build.toml)
+          fi
+          grep -q "PB_VERSION = \"$VERSION\"" src/version.hpp
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zlib1g-dev
+          make static
+          file pb
+          ./pb --version | grep -q "$VERSION"
+
+      - name: Package
+        run: |
+          ./pb build . --binary ./pb --out dist --deb --rpm --appimage
+          cp pb "dist/pb-$VERSION-${{ matrix.arch }}"
+          ls -la dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.arch }}
+          path: dist/
+          if-no-files-found: error
+
+  test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { image: 'debian:11', runner: ubuntu-22.04, arch: x86_64, prep: 'apt-get update && apt-get install -y curl ca-certificates' }
+          - { image: 'debian:12', runner: ubuntu-22.04, arch: x86_64, prep: 'apt-get update && apt-get install -y curl ca-certificates' }
+          - { image: 'ubuntu:20.04', runner: ubuntu-22.04, arch: x86_64, prep: 'apt-get update && apt-get install -y curl ca-certificates' }
+          - { image: 'ubuntu:24.04', runner: ubuntu-22.04, arch: x86_64, prep: 'apt-get update && apt-get install -y wget ca-certificates' }
+          - { image: 'fedora:latest', runner: ubuntu-22.04, arch: x86_64, prep: 'true' }
+          - { image: 'rockylinux/rockylinux:8', runner: ubuntu-22.04, arch: x86_64, prep: 'true' }
+          - { image: 'opensuse/leap:15.6', runner: ubuntu-22.04, arch: x86_64, prep: 'zypper --non-interactive install curl gzip' }
+          - { image: 'alpine:3.20', runner: ubuntu-22.04, arch: x86_64, prep: 'apk add --no-cache curl' }
+          - { image: 'debian:12', runner: ubuntu-22.04-arm, arch: aarch64, prep: 'apt-get update && apt-get install -y curl ca-certificates' }
+          - { image: 'fedora:latest', runner: ubuntu-22.04-arm, arch: aarch64, prep: 'true' }
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.image }}
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - name: Prepare
+        run: ${{ matrix.prep }}
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ matrix.arch }}
+          path: dist
+
+      - name: Smoke test
+        run: sh .github/ci/smoke.sh dist
+
+  test-arch:
+    needs: build
+    runs-on: ubuntu-22.04
+    container: archlinux:latest
+    steps:
+      - name: Prepare
+        run: |
+          pacman -Syu --noconfirm --needed base-devel zlib git
+          useradd -m builder
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-x86_64
+          path: dist
+
+      - name: PKGBUILD from source
+        run: |
+          install -Dm755 dist/pb-*-x86_64 /usr/local/bin/pb
+          cp -r . /tmp/src && rm -rf /tmp/src/.git /tmp/src/dist
+          pb build /tmp/src --binary /usr/local/bin/pb --out /tmp/aur --aur
+          chown -R builder /tmp/aur
+          cd /tmp/aur/pb
+          su builder -c 'makepkg --noconfirm'
+          rm /usr/local/bin/pb
+          pacman -U --noconfirm ./pb-*.pkg.tar.zst
+          pb --version
+
+      - name: Smoke test
+        run: sh .github/ci/smoke.sh dist
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [test, test-arch]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist
+
+      - name: Checksums and pb-bin
+        run: |
+          TAG="$GITHUB_REF_NAME"
+          VERSION="${TAG#v}"
+          BASE="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$TAG"
+          cd dist
+          SHA_X86=$(sha256sum "pb-$VERSION-x86_64" | cut -d' ' -f1)
+          SHA_ARM=$(sha256sum "pb-$VERSION-aarch64" | cut -d' ' -f1)
+          cat > PKGBUILD <<EOF
+          # Maintainer: Qwarwin4 <qwarwin@gmail.com>
+          pkgname=pb-bin
+          pkgver=$VERSION
+          pkgrel=1
+          pkgdesc='Builds .deb, .rpm, .AppImage and PKGBUILD from one config'
+          arch=('x86_64' 'aarch64')
+          url='$GITHUB_SERVER_URL/$GITHUB_REPOSITORY'
+          license=('GPL-3.0-or-later')
+          provides=('pb')
+          conflicts=('pb')
+          source_x86_64=("pb-\$pkgver-x86_64::$BASE/pb-$VERSION-x86_64")
+          source_aarch64=("pb-\$pkgver-aarch64::$BASE/pb-$VERSION-aarch64")
+          sha256sums_x86_64=('$SHA_X86')
+          sha256sums_aarch64=('$SHA_ARM')
+
+          package() {
+            install -Dm755 "\$srcdir/pb-\$pkgver-\$CARCH" "\$pkgdir/usr/bin/pb"
+          }
+          EOF
+          sha256sum pb-* pb_* > sha256sums.txt
+          cat sha256sums.txt PKGBUILD
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
