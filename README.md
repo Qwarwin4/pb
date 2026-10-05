@@ -14,7 +14,7 @@ Static binary, runs on any distro, x86_64 and aarch64.
 ```sh
 git clone --depth 1 https://github.com/Qwarwin4/pb
 cd pb
-./pb-ctl.sh
+./install.sh
 ```
 
 Or use a package: `apt install ./pb_1.0.0_amd64.deb`, `dnf install ./pb-1.0.0-1.x86_64.rpm`,
