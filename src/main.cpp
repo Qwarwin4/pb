@@ -121,6 +121,15 @@ int build(int argc, char** argv) {
         std::cout << lang::t("pkg_info") << c.name << " " << c.version << std::endl;
 
         Proj proj = detectProj(c.dir);
+        if (proj == Proj::Unknown && binPath.empty())
+            if (auto up = projRootAbove(c.dir); !up.empty()) return fail(lang::t("proj_above") + up);
+        if (proj == Proj::Go) {
+            try {
+                c.main = goMain(c);
+            } catch (const std::exception&) {
+                if (binPath.empty()) throw;
+            }
+        }
         if (!binPath.empty()) {
             binPath = fs::absolute(binPath).lexically_normal().string();
             if (!fs::is_regular_file(binPath)) return fail(lang::t("binary_not_found") + binPath);
@@ -128,7 +137,7 @@ int build(int argc, char** argv) {
         } else {
             std::cout << lang::t("detect") << projName(proj) << std::endl;
             std::cout << lang::t("building") << std::endl;
-            binPath = buildProj(proj, c.dir, c.binary);
+            binPath = buildProj(proj, c);
             std::cout << lang::t("built") << binPath << std::endl;
         }
 

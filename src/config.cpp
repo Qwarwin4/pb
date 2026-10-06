@@ -183,6 +183,7 @@ Config Config::load(const std::string& projectDir) {
         else if (key == "url") c.url = str(v, startLine);
         else if (key == "binary") c.binary = str(v, startLine);
         else if (key == "arch") c.arch = normArch(str(v, startLine));
+        else if (key == "main") c.main = str(v, startLine);
         else if (key == "icon") c.icon = str(v, startLine);
         else if (key == "categories") c.categories = str(v, startLine);
         else if (key == "gui") {
@@ -216,6 +217,15 @@ Config Config::load(const std::string& projectDir) {
     for (auto& d : c.depends)
         if (d.empty() || hasControl(d) || d.find(',') != std::string::npos)
             fail(path, lang::t("cfg_dep") + d);
+
+    if (!c.main.empty()) {
+        auto m = fs::path(c.main).lexically_normal().generic_string();
+        while (m.size() > 1 && m.back() == '/') m.pop_back();
+        bool bad = !std::regex_match(m, std::regex("[A-Za-z0-9._/+-]+")) || m[0] == '/' || m == ".." ||
+                   m.rfind("../", 0) == 0;
+        if (bad || !fs::is_directory(fs::path(c.dir) / m)) fail(path, lang::t("cfg_main") + c.main);
+        c.main = m == "." ? "." : "./" + m;
+    }
 
     if (c.description.empty()) c.description = c.name;
     if (!c.categories.empty() && c.categories.back() != ';') c.categories += ';';

@@ -37,6 +37,16 @@ const Dict& dict() {
         {"cfg_ctrl", {"в значении есть перевод строки или управляющий символ: ",
                       "value contains a newline or control character: "}},
         {"cfg_dep", {"некорректная зависимость: ", "invalid dependency: "}},
+        {"cfg_main", {"main: каталог не найден или путь выходит за пределы проекта: ",
+                      "main: directory not found or outside the project: "}},
+        {"go_no_main", {"не найден package main ни в одной папке проекта: ",
+                        "no package main found anywhere in the project: "}},
+        {"go_many_main", {"в проекте несколько package main, укажи нужный в build.toml:",
+                          "several main packages found, pick one in build.toml:"}},
+        {"proj_above", {"build.toml должен лежать в корне проекта, рядом с go.mod / Cargo.toml / CMakeLists.txt / Makefile. "
+                        "Перенеси его сюда: ",
+                        "build.toml must sit in the project root next to go.mod / Cargo.toml / CMakeLists.txt / Makefile. "
+                        "Move it here: "}},
         {"cfg_icon_missing", {"иконка не найдена: ", "icon not found: "}},
         {"cfg_icon_ext", {"иконка должна быть .png или .svg: ", "icon must be .png or .svg: "}},
         {"cfg_icon_cli", {"icon задан, но gui = false — консольной программе иконка не нужна, пропускаю",

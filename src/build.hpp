@@ -1,5 +1,7 @@
 #pragma once
+#include "config.hpp"
 #include "detect.hpp"
 #include <string>
 
-std::string buildProj(Proj p, const std::string& dir, const std::string& binName);
+std::string goMain(const Config& c);
+std::string buildProj(Proj p, const Config& c);

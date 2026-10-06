@@ -17,7 +17,7 @@ cd pb
 ./install.sh
 ```
 
-Or use a package: `apt install ./pb_1.0.0_amd64.deb`, `dnf install ./pb-1.0.0-1.x86_64.rpm`,
+Or use a package: `apt install ./pb_1.0.1_amd64.deb`, `dnf install ./pb-1.0.1-1.x86_64.rpm`,
 `makepkg -si` with the attached `PKGBUILD`, or run the AppImage directly.
 
 ## Usage
@@ -47,6 +47,7 @@ depends     = ["libc6"]                      # passed to the packages as-is
 | `binary` | same as `name` | file installed to `/usr/bin` |
 | `arch` | detected from ELF | `amd64`, `arm64`, `i386`, `armhf`, `riscv64`, `all` |
 | `depends` | `[]` | runtime dependencies |
+| `main` | found automatically | Go only: package to build, e.g. `./cmd/hello` |
 
 ### 2. Build
 
@@ -68,6 +69,10 @@ pb recognizes the project type and builds it in release mode:
 | Make | `Makefile` | `make` |
 
 Anything else (Python, shell scripts, prebuilt binaries) goes through `--binary`.
+
+`build.toml` belongs next to `go.mod`, `Cargo.toml`, `CMakeLists.txt` or `Makefile`. For Go, pb finds
+`package main` on its own, whether it lives in the root, `./cmd/<binary>` or `./src`. If there are several,
+it lists them and you pick one with `main = "./cmd/hello"`.
 
 ### 3. Get the packages
 
@@ -118,6 +123,6 @@ pb adds a `.desktop` entry and installs the icon into the hicolor theme.
 
 Builds CMake, Cargo, Go and Make projects automatically. Other commands: `install`, `uninstall`, `repair`, `update`, `lang ru|en`.
 
-Tested on Debian 11/12, Ubuntu 20.04/24.04, Fedora, Rocky 8, openSUSE Leap, Alpine and Arch.
+Tested on Debian 12, Ubuntu 20.04/24.04, Fedora, Rocky 8, openSUSE Leap, Alpine and Arch.
 
 Licensed under GPL-3.0-or-later.
