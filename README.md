@@ -1,7 +1,6 @@
 # pb - universal package builder
 
 [![Release](https://img.shields.io/github/v/release/qwarwin4/pb?label=release)](https://github.com/qwarwin4/pb/releases/latest)
-[![CI](https://github.com/qwarwin4/pb/actions/workflows/release.yml/badge.svg)](https://github.com/qwarwin4/pb/actions/workflows/release.yml)
 [![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
 [![Email](https://img.shields.io/badge/email-qwarwin%40gmail.com-D14836?logo=gmail&logoColor=white)](mailto:qwarwin@gmail.com)
 [![Telegram](https://img.shields.io/badge/Telegram-Channel-26A5E4?logo=telegram&logoColor=white)](https://t.me/qwarwin4git)
