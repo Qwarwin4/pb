@@ -61,7 +61,7 @@ std::string buildFn(Proj p, const Config& c, bool locked) {
         case Proj::Go:
             return "  export CGO_CPPFLAGS=\"$CPPFLAGS\" CGO_CFLAGS=\"$CFLAGS\" CGO_CXXFLAGS=\"$CXXFLAGS\" CGO_LDFLAGS=\"$LDFLAGS\"\n"
                    "  export GOFLAGS=\"-buildmode=pie -trimpath -mod=readonly -modcacherw\"\n"
-                   "  go build -o " + shellQuote(c.binary) + " .\n";
+                   "  go build -o " + shellQuote(c.binary) + " " + shellQuote(c.main.empty() ? "." : c.main) + "\n";
         case Proj::Make:
             return "  make\n";
         default:

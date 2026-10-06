@@ -12,6 +12,7 @@ struct Config {
     std::string url;
     std::string binary;
     std::string arch;
+    std::string main;
     bool gui = false;
     std::string icon;
     std::string categories = "Utility;";

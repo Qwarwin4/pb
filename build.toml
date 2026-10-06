@@ -1,5 +1,5 @@
 name        = "pb"
-version     = "1.0.0"
+version     = "1.0.1"
 description = "Builds .deb, .rpm, .AppImage and PKGBUILD from one config"
 maintainer  = "Qwarwin4 <qwarwin@gmail.com>"
 license     = "GPL-3.0-or-later"
