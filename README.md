@@ -17,7 +17,7 @@ cd pb
 ./install.sh
 ```
 
-Or use a package: `apt install ./pb_1.0.1_amd64.deb`, `dnf install ./pb-1.0.1-1.x86_64.rpm`,
+Or use a package: `apt install ./pb_1.0.3_amd64.deb`, `dnf install ./pb-1.0.3-1.x86_64.rpm`,
 `makepkg -si` with the attached `PKGBUILD`, or run the AppImage directly.
 
 ## Usage
@@ -112,7 +112,10 @@ pb adds a `.desktop` entry and installs the icon into the hicolor theme.
 | `pb install` | copy pb to `/usr/local/bin` |
 | `pb uninstall [--purge]` | remove pb; `--purge` also clears config and cache |
 | `pb repair` | fix permissions, broken language config and stale cache |
-| `pb update [--yes]` | update from GitHub Releases, verified by sha256 |
+| `pb update [--yes]` | update to the newest `vX.Y.Z` tag, verified by sha256 |
+| `pb debug [DIR]` | report on the system, tools and project, handy for bug reports |
+| `pb debug FILE` | check a `.deb`, `.rpm`, `.AppImage` or binary: contents, architecture, glibc |
+| `pb clear cache` | delete the AppImage runtime and temp build dirs |
 | `pb lang ru\|en` | switch message language |
 
 ### Good to know

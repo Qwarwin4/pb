@@ -36,6 +36,9 @@ chmod +x "$t/app/hello-pb"
 pb build "$t/app" --binary "$t/app/hello-pb" --out "$t/out" --deb --rpm --appimage
 ls -la "$t/out"
 
+pb debug "$t/app"
+for f in "$t"/out/*; do pb debug "$f"; done
+
 test "$("$t"/out/hello-pb-1.2.3-*.AppImage --appimage-extract-and-run)" = hello-from-pb
 
 if command -v apt-get >/dev/null; then
@@ -54,4 +57,5 @@ elif command -v zypper >/dev/null; then
 fi
 
 rm -rf "$t"
+pb clear cache
 echo smoke-ok

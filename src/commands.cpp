@@ -163,12 +163,17 @@ int update(bool yes) {
     }
 
     std::cout << lang::t("checking") << PB_REPO << std::endl;
-    auto json = fetch(std::string("https://api.github.com/repos/") + PB_REPO + "/releases/latest");
-    std::smatch m;
-    if (!std::regex_search(json, m, std::regex("\"tag_name\"\\s*:\\s*\"([^\"]+)\"")))
-        throw std::runtime_error(lang::t("no_tag"));
-    std::string tag = m[1].str();
-    std::string ver = tag[0] == 'v' ? tag.substr(1) : tag;
+    auto json = fetch(std::string("https://api.github.com/repos/") + PB_REPO + "/tags?per_page=100");
+    std::string tag, ver;
+    std::regex nameRe("\"name\"\\s*:\\s*\"(v?([0-9]+(\\.[0-9]+){0,3}))\"");
+    for (std::sregex_iterator it(json.begin(), json.end(), nameRe), end; it != end; ++it) {
+        std::string v = (*it)[2].str();
+        if (ver.empty() || versionParts(v) > versionParts(ver)) {
+            ver = v;
+            tag = (*it)[1].str();
+        }
+    }
+    if (tag.empty()) throw std::runtime_error(lang::t("no_tag"));
 
     auto remote = versionParts(ver), local = versionParts(PB_VERSION);
     if (remote == local) {
@@ -198,8 +203,13 @@ int update(bool yes) {
     auto asset = "pb-" + ver + "-" + arch;
     auto base = std::string("https://github.com/") + PB_REPO + "/releases/download/" + tag + "/";
 
-    std::string expected;
-    std::stringstream sums(fetch(base + "sha256sums.txt"));
+    std::string expected, sumsText;
+    try {
+        sumsText = fetch(base + "sha256sums.txt");
+    } catch (const std::exception&) {
+        throw std::runtime_error(lang::t("not_published") + tag);
+    }
+    std::stringstream sums(sumsText);
     std::string line;
     while (std::getline(sums, line)) {
         auto sp = line.find("  ");
@@ -226,6 +236,22 @@ int update(bool yes) {
     return 0;
 }
 
+int clearCache() {
+    auto dir = cacheDir();
+    std::error_code ec;
+    if (!fs::exists(dir, ec)) {
+        std::cout << lang::t("cache_empty") << "\n";
+        return 0;
+    }
+    uintmax_t freed = 0;
+    for (fs::recursive_directory_iterator it(dir, ec), end; !ec && it != end; it.increment(ec))
+        if (it->is_regular_file(ec)) freed += it->file_size(ec);
+    fs::remove_all(dir, ec);
+    if (ec) throw std::runtime_error(dir + ": " + ec.message());
+    std::cout << lang::t("cache_cleared") << dir << " (" << (freed + 1023) / 1024 << " KiB)\n";
+    return 0;
+}
+
 template <typename F>
 int guarded(F fn) {
     try {
@@ -242,3 +268,4 @@ int cmdInstall() { return guarded(install); }
 int cmdUninstall(bool purge) { return guarded([purge] { return uninstall(purge); }); }
 int cmdRepair() { return guarded(repair); }
 int cmdUpdate(bool yes) { return guarded([yes] { return update(yes); }); }
+int cmdClearCache() { return guarded(clearCache); }

@@ -1,5 +1,6 @@
 #include "build.hpp"
 #include "commands.hpp"
+#include "debug.hpp"
 #include "config.hpp"
 #include "detect.hpp"
 #include "elf.hpp"
@@ -31,7 +32,9 @@ void help() {
             "  install                  install pb to /usr/local/bin\n"
             "  uninstall [--purge]      remove pb (--purge also wipes config and cache)\n"
             "  repair                   check and fix the installation, config and cache\n"
-            "  update [--yes]           update pb from GitHub Releases\n"
+            "  update [--yes]           update pb to the newest version tag\n"
+            "  debug [DIR|FILE]         system and project report, or check a .deb/.rpm/.AppImage\n"
+            "  clear cache              delete the cache (AppImage runtime, temp dirs)\n"
             "  lang ru|en               message language\n"
             "  --version                print version\n"
             "  -h, --help               this message\n"
@@ -63,7 +66,9 @@ void help() {
             "  install                  установить pb в /usr/local/bin\n"
             "  uninstall [--purge]      удалить pb (--purge стирает и конфиг, и кэш)\n"
             "  repair                   проверить и починить установку, конфиг и кэш\n"
-            "  update [--yes]           обновить pb из GitHub Releases\n"
+            "  update [--yes]           обновить pb до последнего тега версии\n"
+            "  debug [DIR|ФАЙЛ]         отчёт о системе и проекте или проверка .deb/.rpm/.AppImage\n"
+            "  clear cache              очистить кэш (AppImage runtime, временные папки)\n"
             "  lang ru|en               язык сообщений\n"
             "  --version                версия\n"
             "  -h, --help               это сообщение\n"
@@ -256,6 +261,17 @@ int main(int argc, char** argv) {
     }
     if (cmd == "build") return build(argc, argv);
     if (cmd == "lang") return setLang(argc, argv);
+    if (cmd == "debug") {
+        if (argc > 3) return fail(lang::t("unknown_arg") + argv[3]);
+        return cmdDebug(argc == 3 ? argv[2] : "");
+    }
+    if (cmd == "clear") {
+        if (argc != 3 || std::string(argv[2]) != "cache") {
+            std::cerr << lang::t("clear_usage") << "\n";
+            return 1;
+        }
+        return cmdClearCache();
+    }
     if (cmd == "install" || cmd == "repair") {
         if (argc > 2) return fail(lang::t("unknown_arg") + argv[2]);
         return cmd == "install" ? cmdInstall() : cmdRepair();
