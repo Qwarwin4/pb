@@ -1,9 +1,20 @@
 #pragma once
+#include "lang.hpp"
+#include <climits>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <unistd.h>
+#include <vector>
+
+inline const auto exec755 = std::filesystem::perms::owner_all | std::filesystem::perms::group_read |
+                            std::filesystem::perms::group_exec | std::filesystem::perms::others_read |
+                            std::filesystem::perms::others_exec;
+inline const auto file644 = std::filesystem::perms::owner_read | std::filesystem::perms::owner_write |
+                            std::filesystem::perms::group_read | std::filesystem::perms::others_read;
 
 inline std::string homeDir() {
     const char* h = std::getenv("HOME");
@@ -54,4 +65,26 @@ inline void replaceFile(const std::string& src, const std::string& dst, std::fil
         fs::remove(tmp);
         throw std::runtime_error(dst + ": " + ec.message());
     }
+}
+
+inline void writeFile(const std::string& path, const std::string& data) {
+    std::ofstream f(path, std::ios::binary | std::ios::trunc);
+    f << data;
+    f.close();
+    if (!f) throw std::runtime_error(lang::t("cant_write") + path);
+}
+
+inline std::string selfPath() {
+    char buf[PATH_MAX];
+    ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (n < 0) throw std::runtime_error("/proc/self/exe");
+    return std::string(buf, (size_t)n);
+}
+
+inline std::vector<long> versionParts(const std::string& v) {
+    std::vector<long> out;
+    std::stringstream ss(v);
+    std::string part;
+    while (std::getline(ss, part, '.')) out.push_back(std::strtol(part.c_str(), nullptr, 10));
+    return out;
 }

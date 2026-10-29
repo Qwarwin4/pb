@@ -1,5 +1,6 @@
 #include "stage.hpp"
 #include "lang.hpp"
+#include "util.hpp"
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -17,18 +18,6 @@ std::string pngSizeDir(const std::string& file) {
     uint32_t ht = (uint32_t)h[20] << 24 | h[21] << 16 | h[22] << 8 | h[23];
     if (w != ht || w == 0 || w > 1024) return "256x256";
     return std::to_string(w) + "x" + std::to_string(w);
-}
-
-const auto exec755 = fs::perms::owner_all | fs::perms::group_read | fs::perms::group_exec |
-                     fs::perms::others_read | fs::perms::others_exec;
-const auto file644 = fs::perms::owner_read | fs::perms::owner_write | fs::perms::group_read |
-                     fs::perms::others_read;
-
-void writeFile(const fs::path& p, const std::string& data) {
-    std::ofstream out(p, std::ios::binary | std::ios::trunc);
-    out << data;
-    out.close();
-    if (!out) throw std::runtime_error(lang::t("cant_write") + p.string());
 }
 
 }
@@ -67,6 +56,6 @@ void makeStage(const Config& c, const std::string& bin, const std::string& root)
     std::string d = "[Desktop Entry]\nType=Application\nName=" + c.name + "\nComment=" + c.description +
                     "\nExec=" + c.binary + "\nCategories=" + c.categories + "\nTerminal=false\n";
     if (!c.icon.empty()) d += "Icon=" + c.name + "\n";
-    writeFile(desktop, d);
+    writeFile(desktop.string(), d);
     fs::permissions(desktop, file644);
 }

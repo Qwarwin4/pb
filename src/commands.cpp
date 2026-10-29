@@ -1,13 +1,12 @@
 #include "commands.hpp"
 #include "elf.hpp"
-#include "fsutil.hpp"
+#include "util.hpp"
 #include "lang.hpp"
 #include "proc.hpp"
-#include "sha256.hpp"
+#include "hash.hpp"
 #include "version.hpp"
 #include "pkg/appimage.hpp"
 #include <chrono>
-#include <climits>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -21,16 +20,6 @@ namespace fs = std::filesystem;
 namespace {
 
 const std::string DST = "/usr/local/bin/pb";
-const auto exec755 = fs::perms::owner_all | fs::perms::group_read | fs::perms::group_exec |
-                     fs::perms::others_read | fs::perms::others_exec;
-
-std::string selfPath() {
-    char buf[PATH_MAX];
-    ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
-    if (n < 0) throw std::runtime_error("/proc/self/exe");
-    return std::string(buf, (size_t)n);
-}
-
 bool writable(const std::string& p) { return access(p.c_str(), W_OK) == 0; }
 
 int needRoot(const std::string& what) {
@@ -128,14 +117,6 @@ int repair() {
     return 0;
 }
 
-std::vector<long> versionParts(const std::string& v) {
-    std::vector<long> out;
-    std::stringstream ss(v);
-    std::string part;
-    while (std::getline(ss, part, '.')) out.push_back(std::strtol(part.c_str(), nullptr, 10));
-    return out;
-}
-
 std::string fetch(const std::string& url) {
     try {
         if (exists("curl")) return capture({"curl", "-fsSL", "--retry", "2", url}, true);
@@ -227,9 +208,9 @@ int update(bool yes) {
     std::string out;
     try {
         out = capture({file, "--version"}, true);
-    } catch (...) {
+    } catch (const std::exception&) {
     }
-    if (out.find(ver) == std::string::npos) throw std::runtime_error(lang::t("bad_binary"));
+    if (out != "pb " + ver + "\n") throw std::runtime_error(lang::t("bad_binary"));
 
     replaceFile(file, self, exec755);
     std::cout << lang::t("updated") << ver << "\n";

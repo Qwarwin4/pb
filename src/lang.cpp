@@ -1,5 +1,5 @@
 #include "lang.hpp"
-#include "fsutil.hpp"
+#include "util.hpp"
 #include <filesystem>
 #include <fstream>
 #include <unordered_map>
@@ -37,6 +37,8 @@ const Dict& dict() {
         {"cfg_ctrl", {"в значении есть перевод строки или управляющий символ: ",
                       "value contains a newline or control character: "}},
         {"cfg_dep", {"некорректная зависимость: ", "invalid dependency: "}},
+        {"go_cgo", {"без cgo проект не собирается, собираю с cgo: бинарник будет зависеть от glibc этой системы",
+                    "the project does not build without cgo, building with cgo: the binary will depend on this system's glibc"}},
         {"cfg_main", {"main: каталог не найден или путь выходит за пределы проекта: ",
                       "main: directory not found or outside the project: "}},
         {"go_no_main", {"не найден package main ни в одной папке проекта: ",
@@ -80,6 +82,7 @@ const Dict& dict() {
 
         {"cmd_failed", {"команда упала (код ", "command failed (code "}},
         {"not_found", {"команда не найдена: ", "command not found: "}},
+        {"cant_read", {"не смог прочитать: ", "cannot read: "}},
         {"cant_write", {"не смог записать: ", "cannot write: "}},
         {"needs_value", {" требует значение", " needs a value"}},
         {"unknown_arg", {"неизвестный аргумент: ", "unknown argument: "}},

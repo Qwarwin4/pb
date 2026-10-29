@@ -65,7 +65,7 @@ pb recognizes the project type and builds it in release mode:
 |---|---|---|
 | CMake | `CMakeLists.txt` | `cmake -DCMAKE_BUILD_TYPE=Release` + `cmake --build` |
 | Rust | `Cargo.toml` | `cargo build --release` |
-| Go | `go.mod` | `go build` |
+| Go | `go.mod` | `CGO_ENABLED=0 go build` (falls back to cgo if needed) |
 | Make | `Makefile` | `make` |
 
 Anything else (Python, shell scripts, prebuilt binaries) goes through `--binary`.
@@ -120,7 +120,7 @@ pb adds a `.desktop` entry and installs the icon into the hicolor theme.
 
 ### Good to know
 
-- **Portability.** pb warns if the binary needs a newer glibc than Debian 11, Ubuntu 20.04 or RHEL 8 ship. Build statically or on an older distro to cover them.
+- **Portability.** pb warns if the binary needs a newer glibc than Debian 11, Ubuntu 20.04 or RHEL 8 ship. Build statically or on an older distro to cover them. Go projects are built without cgo, so their binaries are static and run anywhere. `pb debug package.deb` tells you whether a package will run on the current machine.
 - **AppImage runtime.** It's downloaded once with curl or wget and cached in `~/.cache/pb/`. To build offline, run `PB_APPIMAGE_RUNTIME=/path/to/runtime pb build`.
 - **Reproducible output.** File timestamps are zeroed. The rpm build time respects `SOURCE_DATE_EPOCH`.
 

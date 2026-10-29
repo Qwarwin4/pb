@@ -1,12 +1,12 @@
 #include "aur.hpp"
 #include "../archive.hpp"
-#include "../fsutil.hpp"
+#include "../util.hpp"
 #include "../lang.hpp"
 #include "../proc.hpp"
-#include "../sha256.hpp"
+#include "../hash.hpp"
 #include "../stage.hpp"
 #include <filesystem>
-#include <fstream>
+#include <set>
 #include <stdexcept>
 #include <vector>
 namespace fs = std::filesystem;
@@ -78,22 +78,23 @@ std::string makedep(Proj p) {
     }
 }
 
-void write(const std::string& path, const std::string& data) {
-    std::ofstream f(path, std::ios::trunc);
-    f << data;
-    f.close();
-    if (!f) throw std::runtime_error(lang::t("cant_write") + path);
-}
-
-std::vector<std::string> skipList(const Config& c, const std::string& outDir, const std::string& binRel) {
-    std::vector<std::string> skip = {".git", "build", "target", "stage", "dist", "pb-builds"};
-    if (!binRel.empty()) skip.push_back(fs::path(binRel).lexically_normal().generic_string());
+std::function<bool(const std::string&)> skipper(const Config& c, const std::string& outDir,
+                                                const std::string& binRel) {
+    std::set<std::string> skip = {".git", "build", "target", "stage", "dist", "pb-builds"};
+    if (!binRel.empty()) skip.insert(fs::path(binRel).lexically_normal().generic_string());
+    auto root = fs::weakly_canonical(c.dir).string();
     auto out = fs::weakly_canonical(outDir).string();
-    if (out.rfind(c.dir + "/", 0) == 0) {
-        auto rel = out.substr(c.dir.size() + 1);
-        skip.push_back(rel.substr(0, rel.find('/')));
+    if (out == root) skip.insert(c.name);
+    else if (out.rfind(root + "/", 0) == 0) {
+        auto rel = out.substr(root.size() + 1);
+        skip.insert(rel.substr(0, rel.find('/')));
     }
-    return skip;
+
+    return [skip](const std::string& rel) {
+        if (skip.count(rel)) return true;
+        auto ext = fs::path(rel).extension();
+        return ext == ".deb" || ext == ".rpm" || ext == ".AppImage" || ext == ".part";
+    };
 }
 
 }
@@ -123,7 +124,7 @@ std::string packAur(const Config& c, Proj proj, const std::string& binRel, const
         sources.push_back({c.name + "::git+" + url, "SKIP"});
     } else {
         auto tar = src + ".tar.gz";
-        writeTarGz(c.dir, dir + "/" + tar, src + "/", skipList(c, outDir, binRel));
+        writeTarGz(c.dir, dir + "/" + tar, src + "/", skipper(c, outDir, binRel));
         sources.push_back({tar, sha256File(dir + "/" + tar)});
     }
 
@@ -174,7 +175,7 @@ std::string packAur(const Config& c, Proj proj, const std::string& binRel, const
     pb += "build() {\n  cd \"$srcdir/" + src + "\"\n" + buildFn(proj, c, locked) + "}\n\n"
           "package() {\n  cd \"$srcdir/" + src + "\"\n"
           "  install -Dm755 " + shellQuote(rel) + " \"$pkgdir/usr/bin/" + c.binary + "\"\n" + pkg + "}\n";
-    write(dir + "/PKGBUILD", pb);
+    writeFile(dir + "/PKGBUILD", pb);
 
     std::string si = "pkgbase = " + pkgname + "\n"
                      "\tpkgdesc = " + c.description + "\n"
@@ -188,7 +189,7 @@ std::string packAur(const Config& c, Proj proj, const std::string& binRel, const
     for (auto& e : entries) si += "\tsource = " + e + "\n";
     for (auto& s : sums) si += "\tsha256sums = " + s + "\n";
     si += "\npkgname = " + pkgname + "\n";
-    write(dir + "/.SRCINFO", si);
+    writeFile(dir + "/.SRCINFO", si);
 
     return dir;
 }

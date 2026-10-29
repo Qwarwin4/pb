@@ -98,17 +98,19 @@ void fileBody(Gz& gz, const fs::path& p, uint64_t size) {
 }
 
 void writeTarGz(const std::string& root, const std::string& out, const std::string& prefix,
-                const std::vector<std::string>& skip) {
+                const std::function<bool(const std::string&)>& skip) {
     std::vector<fs::path> entries;
-    fs::recursive_directory_iterator it(root), end;
-    for (; it != end; ++it) {
+    std::error_code ec;
+    fs::recursive_directory_iterator it(root, ec), end;
+    for (; !ec && it != end; it.increment(ec)) {
         auto rel = fs::relative(it->path(), root).generic_string();
-        if (std::find(skip.begin(), skip.end(), rel) != skip.end()) {
+        if (skip && skip(rel)) {
             it.disable_recursion_pending();
             continue;
         }
         entries.push_back(it->path());
     }
+    if (ec) throw std::runtime_error(lang::t("cant_read") + root + ": " + ec.message());
     std::sort(entries.begin(), entries.end());
 
     Gz gz(out);
@@ -133,6 +135,7 @@ void writeTarGz(const std::string& root, const std::string& out, const std::stri
 }
 
 void writeAr(const std::string& out, const std::vector<std::pair<std::string, std::string>>& members) {
+    std::error_code ec;
     std::ofstream f(out, std::ios::binary | std::ios::trunc);
     if (!f) throw std::runtime_error(lang::t("cant_write") + out);
     f.write("!<arch>\n", 8);
@@ -148,5 +151,8 @@ void writeAr(const std::string& out, const std::vector<std::pair<std::string, st
         if (size % 2) f.put('\n');
     }
     f.close();
-    if (!f) throw std::runtime_error(lang::t("cant_write") + out);
+    if (!f) {
+        fs::remove(out, ec);
+        throw std::runtime_error(lang::t("cant_write") + out);
+    }
 }

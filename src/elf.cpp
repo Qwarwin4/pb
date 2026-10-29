@@ -1,8 +1,10 @@
 #include "elf.hpp"
+#include "util.hpp"
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <string_view>
 #include <sys/utsname.h>
 #include <vector>
 
@@ -20,35 +22,15 @@ uint64_t rd64(const std::vector<char>& b, size_t o) {
     return rd32(b, o) | (uint64_t)rd32(b, o + 4) << 32;
 }
 
-std::vector<int> parseVer(const std::string& s) {
-    std::vector<int> v;
-    int cur = 0;
-    bool any = false;
-    for (char c : s) {
-        if (c >= '0' && c <= '9') { cur = cur * 10 + (c - '0'); any = true; }
-        else if (c == '.' && any) { v.push_back(cur); cur = 0; any = false; }
-        else break;
-    }
-    if (any) v.push_back(cur);
-    return v;
-}
-
 std::string maxSymbolVersion(const std::vector<char>& b, const std::string& prefix) {
+    std::string_view hay(b.data(), b.size());
     std::string best;
-    std::vector<int> bestV;
-    size_t pos = 0;
-    std::string hay(b.begin(), b.end());
-    while ((pos = hay.find(prefix, pos)) != std::string::npos) {
+    for (size_t pos = 0; (pos = hay.find(prefix, pos)) != std::string_view::npos;) {
         pos += prefix.size();
         size_t end = pos;
         while (end < hay.size() && ((hay[end] >= '0' && hay[end] <= '9') || hay[end] == '.')) ++end;
-        if (end == pos) continue;
-        std::string ver = hay.substr(pos, end - pos);
-        auto v = parseVer(ver);
-        if (v > bestV) {
-            bestV = v;
-            best = ver;
-        }
+        std::string ver(hay.substr(pos, end - pos));
+        if (!ver.empty() && versionParts(ver) > versionParts(best)) best = ver;
     }
     return best;
 }
@@ -113,8 +95,8 @@ std::string hostArch() {
 std::string portabilityProblem(const BinInfo& b) {
     if (!b.dynamic) return "";
     std::string out;
-    if (!b.glibc.empty() && parseVer(b.glibc) > parseVer("2.31")) out = "GLIBC_" + b.glibc;
-    if (!b.glibcxx.empty() && parseVer(b.glibcxx) > parseVer("3.4.28"))
+    if (!b.glibc.empty() && versionParts(b.glibc) > versionParts("2.31")) out = "GLIBC_" + b.glibc;
+    if (!b.glibcxx.empty() && versionParts(b.glibcxx) > versionParts("3.4.28"))
         out += (out.empty() ? "" : ", ") + std::string("GLIBCXX_") + b.glibcxx;
     return out;
 }

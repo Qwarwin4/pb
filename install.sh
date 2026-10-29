@@ -22,7 +22,7 @@ if ! echo '#include <zlib.h>' | "$cxx" -E -x c++ - >/dev/null 2>&1; then
 fi
 
 echo "сборка pb..."
-make -C "$dir" CXX="$cxx"
+make -C "$dir" -j"$(nproc 2>/dev/null || echo 2)" CXX="$cxx"
 
 if [ "$(id -u)" -eq 0 ]; then
     "$dir/pb" install

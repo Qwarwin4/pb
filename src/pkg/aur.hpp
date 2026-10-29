@@ -1,6 +1,6 @@
 #pragma once
 #include "../config.hpp"
-#include "../detect.hpp"
+#include "../build.hpp"
 #include <string>
 
 std::string shellQuote(const std::string& s);

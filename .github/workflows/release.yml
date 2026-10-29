@@ -39,7 +39,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y zlib1g-dev
-          make static
+          make -j"$(nproc)" static
           file pb
           ./pb --version | grep -q "$VERSION"
 

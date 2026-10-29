@@ -1,10 +1,8 @@
 #include "build.hpp"
 #include "commands.hpp"
-#include "debug.hpp"
 #include "config.hpp"
-#include "detect.hpp"
 #include "elf.hpp"
-#include "fsutil.hpp"
+#include "util.hpp"
 #include "lang.hpp"
 #include "stage.hpp"
 #include "version.hpp"
@@ -167,57 +165,44 @@ int build(int argc, char** argv) {
         makeStage(c, binPath, stage);
 
         bool split = outDir.empty();
-        std::string base = split ? homeDir() + "/pb-builds" : fs::absolute(outDir).string();
+        std::string base = split ? homeDir() + "/pb-builds" : fs::absolute(outDir).lexically_normal().string();
+        if (base.size() > 1 && base.back() == '/') base.pop_back();
         auto outFor = [&](const std::string& fmt) {
             auto d = split ? base + "/" + fmt : base;
             fs::create_directories(d);
             return d;
         };
 
-        struct Job {
-            std::string fmt;
-            std::future<std::string> result;
-        };
-        std::vector<Job> jobs;
-        const Config& cfg = c;
-        auto launch = [&](const std::string& fmt, std::function<std::string()> fn) {
-            jobs.push_back({fmt, std::async(std::launch::async, fn)});
+        using Pack = std::function<std::string(const std::string&, const std::string&)>;
+        std::vector<std::pair<std::string, Pack>> packers = {
+            {"deb", [&](auto& w, auto& o) { return packDeb(c, stage, w, o); }},
+            {"rpm", [&](auto& w, auto& o) { return packRpm(c, stage, w, o); }},
+            {"appimage", [&](auto& w, auto& o) { return packAppImage(c, stage, w, o); }},
+            {"aur", [&](auto&, auto& o) { return packAur(c, proj, binRel, stage, o); }},
         };
 
         std::cout << lang::t("packing") << std::endl;
-        if (formats.count("deb")) {
-            auto out = outFor("deb");
-            fs::create_directories(work.path() + "/deb-work");
-            launch("deb", [&, out] { return packDeb(cfg, stage, work.path() + "/deb-work", out); });
-        }
-        if (formats.count("rpm")) {
-            auto out = outFor("rpm");
-            fs::create_directories(work.path() + "/rpm-work");
-            launch("rpm", [&, out] { return packRpm(cfg, stage, work.path() + "/rpm-work", out); });
-        }
-        if (formats.count("appimage")) {
-            auto out = outFor("appimage");
-            fs::create_directories(work.path() + "/appimage-work");
-            launch("appimage", [&, out] { return packAppImage(cfg, stage, work.path() + "/appimage-work", out); });
-        }
-        if (formats.count("aur")) {
-            auto out = outFor("aur");
-            launch("aur", [&, out] { return packAur(cfg, proj, binRel, stage, out); });
+        std::vector<std::pair<std::string, std::future<std::string>>> jobs;
+        for (auto& [fmt, pack] : packers) {
+            if (!formats.count(fmt)) continue;
+            auto w = work.path() + "/" + fmt;
+            fs::create_directories(w);
+            jobs.emplace_back(fmt, std::async(std::launch::async, pack, w, outFor(fmt)));
         }
 
         std::vector<std::string> failed;
-        for (auto& j : jobs) {
+        for (auto& [fmt, job] : jobs) {
             try {
-                auto path = j.result.get();
-                std::cout << "  [" << j.fmt << "] -> " << path << std::endl;
+                auto path = job.get();
+                std::cout << "  [" << fmt << "] -> " << path << std::endl;
             } catch (const fs::filesystem_error& e) {
-                std::cerr << "  [" << j.fmt << "] " << lang::t("cant_write") << e.path1().string() << std::endl;
-                failed.push_back(j.fmt);
+                std::cerr << "  [" << fmt << "] " << lang::t("cant_write") << e.path1().string() << std::endl;
+                failed.push_back(fmt);
             } catch (const std::exception& e) {
                 std::string msg = e.what();
                 if (msg == "unknown_lang") msg = lang::t("unknown_lang");
-                std::cerr << "  [" << j.fmt << "] " << msg << std::endl;
-                failed.push_back(j.fmt);
+                std::cerr << "  [" << fmt << "] " << msg << std::endl;
+                failed.push_back(fmt);
             }
         }
 

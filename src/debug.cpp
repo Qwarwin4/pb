@@ -1,14 +1,12 @@
-#include "debug.hpp"
+#include "commands.hpp"
 #include "config.hpp"
 #include "build.hpp"
-#include "detect.hpp"
 #include "elf.hpp"
-#include "fsutil.hpp"
+#include "util.hpp"
 #include "lang.hpp"
 #include "proc.hpp"
 #include "version.hpp"
 #include "pkg/appimage.hpp"
-#include <climits>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
@@ -102,20 +100,6 @@ std::string hostGlibc() {
     return "";
 }
 
-std::vector<int> ver(const std::string& s) {
-    std::vector<int> v;
-    std::stringstream ss(s);
-    std::string p;
-    while (std::getline(ss, p, '.')) v.push_back(std::atoi(p.c_str()));
-    return v;
-}
-
-std::string selfPath() {
-    char buf[PATH_MAX];
-    ssize_t n = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
-    return n > 0 ? std::string(buf, (size_t)n) : "?";
-}
-
 std::string binSummary(const BinInfo& b) {
     if (b.script) return "script";
     if (!b.elf) return lang::t("dbg_not_elf");
@@ -127,7 +111,7 @@ std::string binSummary(const BinInfo& b) {
 std::vector<std::string> binProblems(const BinInfo& b, const std::string& host, const std::string& glibc) {
     std::vector<std::string> out;
     if (b.elf && !b.arch.empty() && b.arch != host) out.push_back(lang::t("dbg_arch") + b.arch + " / " + host);
-    if (b.elf && b.dynamic && !b.glibc.empty() && !glibc.empty() && ver(b.glibc) > ver(glibc))
+    if (b.elf && b.dynamic && !b.glibc.empty() && !glibc.empty() && versionParts(b.glibc) > versionParts(glibc))
         out.push_back(lang::t("dbg_glibc") + b.glibc + " > " + glibc);
     if (b.elf && b.dynamic && glibc.empty()) out.push_back(lang::t("dbg_no_glibc"));
     return out;

@@ -1,6 +1,6 @@
 #include "appimage.hpp"
 #include "../elf.hpp"
-#include "../fsutil.hpp"
+#include "../util.hpp"
 #include "../lang.hpp"
 #include "../proc.hpp"
 #include "../squashfs.hpp"
@@ -11,13 +11,6 @@
 #include <stdexcept>
 #include <unistd.h>
 namespace fs = std::filesystem;
-
-namespace {
-
-const auto exec755 = fs::perms::owner_all | fs::perms::group_read | fs::perms::group_exec |
-                     fs::perms::others_read | fs::perms::others_exec;
-
-}
 
 std::string appimageArch(const std::string& arch) {
     if (arch == "amd64") return "x86_64";
@@ -75,14 +68,9 @@ std::string packAppImage(const Config& c, const std::string& stage, const std::s
     resetDir(appdir);
     fs::copy(stage + "/usr", appdir + "/usr", fs::copy_options::recursive);
 
-    {
-        std::ofstream run(appdir + "/AppRun");
-        run << "#!/bin/sh\n"
-            << "HERE=\"${APPDIR:-$(dirname \"$(readlink -f \"$0\")\")}\"\n"
-            << "exec \"$HERE/usr/bin/" << c.binary << "\" \"$@\"\n";
-        run.close();
-        if (!run) throw std::runtime_error(lang::t("cant_write") + appdir + "/AppRun");
-    }
+    writeFile(appdir + "/AppRun", "#!/bin/sh\n"
+                                  "HERE=\"${APPDIR:-$(dirname \"$(readlink -f \"$0\")\")}\"\n"
+                                  "exec \"$HERE/usr/bin/" + c.binary + "\" \"$@\"\n");
     fs::permissions(appdir + "/AppRun", exec755);
 
     if (c.gui) {

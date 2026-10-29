@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <filesystem>
 #include <stdexcept>
 #include <vector>
@@ -56,7 +57,7 @@ bool hasMainPackage(const fs::path& dir) {
         while (std::getline(in, line)) {
             auto s = line.find_first_not_of(" \t");
             if (s == std::string::npos || line.compare(s, 2, "//") == 0) continue;
-            if (line.compare(s, 13, "package main") == 0 &&
+            if (line.compare(s, 12, "package main") == 0 &&
                 (line.size() == s + 12 || std::isspace((unsigned char)line[s + 12]) || line[s + 12] == '/'))
                 return true;
             break;
@@ -65,6 +66,33 @@ bool hasMainPackage(const fs::path& dir) {
     return false;
 }
 
+}
+
+Proj detectProj(const std::string& dir) {
+    if (fs::exists(dir + "/CMakeLists.txt")) return Proj::Cmake;
+    if (fs::exists(dir + "/Cargo.toml"))     return Proj::Cargo;
+    if (fs::exists(dir + "/go.mod"))         return Proj::Go;
+    if (fs::exists(dir + "/Makefile"))       return Proj::Make;
+    return Proj::Unknown;
+}
+
+std::string projRootAbove(const std::string& dir) {
+    auto p = fs::absolute(dir).lexically_normal();
+    for (int i = 0; i < 4 && p.has_parent_path() && p.parent_path() != p; ++i) {
+        p = p.parent_path();
+        if (detectProj(p.string()) != Proj::Unknown) return p.string();
+    }
+    return "";
+}
+
+std::string projName(Proj p) {
+    switch (p) {
+        case Proj::Cmake: return "CMake/C++";
+        case Proj::Cargo: return "Rust (cargo)";
+        case Proj::Go:    return "Go";
+        case Proj::Make:  return "Make";
+        default:          return "?";
+    }
 }
 
 std::string goMain(const Config& c) {
@@ -115,9 +143,21 @@ std::string buildProj(Proj p, const Config& c) {
             return locate({target / "release" / bin}, target / "release", bin);
         }
 
-        case Proj::Go:
-            must({"go", "build", "-o", bin, goMain(c)}, dir);
+        case Proj::Go: {
+            if (!exists("go")) throw std::runtime_error(lang::t("not_found") + "go");
+            std::vector<std::string> cmd = {"go", "build", "-trimpath", "-ldflags=-s -w", "-o", bin, goMain(c)};
+            if (std::getenv("CGO_ENABLED")) {
+                must(cmd, dir);
+            } else {
+                auto pure = cmd;
+                pure.insert(pure.begin(), {"env", "CGO_ENABLED=0"});
+                if (run(pure, dir, true) != 0) {
+                    std::cerr << lang::t("warning") << lang::t("go_cgo") << "\n";
+                    must(cmd, dir);
+                }
+            }
             return locate({d / bin}, d, bin);
+        }
 
         case Proj::Make:
             must({"make"}, dir);
