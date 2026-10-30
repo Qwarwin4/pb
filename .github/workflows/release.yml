@@ -3,9 +3,16 @@ name: release
 on:
   push:
     branches: [main]
-    tags: ['v*']
+    tags: ['v*', '[0-9]*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: existing tag to build a release for
+        required: false
+
+env:
+  TAG: ${{ inputs.tag || (github.ref_type == 'tag' && github.ref_name) || '' }}
 
 permissions:
   contents: write
@@ -22,11 +29,13 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - name: Version
         run: |
-          if [ "$GITHUB_REF_TYPE" = tag ]; then
-            VERSION="${GITHUB_REF_NAME#v}"
+          if [ -n "$TAG" ]; then
+            VERSION="${TAG#v}"
             sed -i "s/PB_VERSION = \".*\"/PB_VERSION = \"$VERSION\"/" src/version.hpp
             sed -i "s/^version .*/version     = \"$VERSION\"/" build.toml
           else
@@ -99,6 +108,8 @@ jobs:
           useradd -m builder
 
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -121,7 +132,7 @@ jobs:
         run: sh .github/ci/smoke.sh dist
 
   release:
-    if: github.ref_type == 'tag'
+    if: github.ref_type == 'tag' || (github.event_name == 'workflow_dispatch' && inputs.tag != '')
     needs: [test, test-arch]
     runs-on: ubuntu-22.04
     steps:
@@ -137,7 +148,6 @@ jobs:
 
       - name: Checksums and pb-bin
         run: |
-          TAG="$GITHUB_REF_NAME"
           VERSION="${TAG#v}"
           BASE="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$TAG"
           cd dist
@@ -171,12 +181,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          notes=".github/notes/$GITHUB_REF_NAME.md"
-          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            if [ -f "$notes" ]; then gh release edit "$GITHUB_REF_NAME" --notes-file "$notes"; fi
+          notes=".github/notes/v${TAG#v}.md"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            if [ -f "$notes" ]; then gh release edit "$TAG" --notes-file "$notes"; fi
           elif [ -f "$notes" ]; then
-            gh release create "$GITHUB_REF_NAME" --title "pb $GITHUB_REF_NAME" --notes-file "$notes"
+            gh release create "$TAG" --title "pb v${TAG#v}" --notes-file "$notes"
           else
-            gh release create "$GITHUB_REF_NAME" --title "pb $GITHUB_REF_NAME" --generate-notes
+            gh release create "$TAG" --title "pb v${TAG#v}" --generate-notes
           fi
-          gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          gh release upload "$TAG" dist/* --clobber
