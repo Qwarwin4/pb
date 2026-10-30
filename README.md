@@ -17,7 +17,7 @@ cd pb
 ./install.sh
 ```
 
-Or use a package: `apt install ./pb_0.1_amd64.deb`, `dnf install ./pb-0.1-1.x86_64.rpm`,
+Or use a package: `apt install ./pb_0.1.1_amd64.deb`, `dnf install ./pb-0.1.1-1.x86_64.rpm`,
 `makepkg -si` with the attached `PKGBUILD`, or run the AppImage directly.
 
 ## Usage
