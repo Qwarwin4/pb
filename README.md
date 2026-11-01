@@ -1,11 +1,13 @@
-# pb - universal package builder
-
-[![Release](https://img.shields.io/github/v/release/qwarwin4/pb?label=release)](https://github.com/qwarwin4/pb/releases/latest)
-[![License: GPL-3.0](https://img.shields.io/badge/license-GPL--3.0-blue)](LICENSE)
+<h1 align="center">pb - universal package builder</h1>
 
 <p align="center">
-  <a href="https://t.me/qwarwin4git"><img src="https://img.shields.io/badge/Telegram-Follow-26A5E4?style=for-the-badge&logo=telegram&logoColor=white&labelColor=1b1f24" height="40" alt="Telegram: follow the channel"></a>
-  <a href="mailto:qwarwin@gmail.com"><img src="https://img.shields.io/badge/Gmail-Contact-EA4335?style=for-the-badge&logo=gmail&logoColor=white&labelColor=1b1f24" height="40" alt="Gmail: contact"></a>
+  <a href="https://github.com/Qwarwin4/pb/releases/latest"><img src="https://img.shields.io/github/v/release/Qwarwin4/pb?style=for-the-badge&labelColor=1b1f24&label=Release&color=2ea043&logo=github&logoColor=white" height="40" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-A42E2B?style=for-the-badge&labelColor=1b1f24&logo=gnu&logoColor=white" height="40" alt="License: GPL-3.0"></a>
+</p>
+
+<p align="center">
+  <a href="https://t.me/qwarwin4git"><img src="https://img.shields.io/badge/Telegram-Follow-26A5E4?style=for-the-badge&labelColor=1b1f24&logo=telegram&logoColor=white" height="40" alt="Telegram: follow the channel"></a>
+  <a href="mailto:qwarwin@gmail.com"><img src="https://img.shields.io/badge/Gmail-Contact-EA4335?style=for-the-badge&labelColor=1b1f24&logo=gmail&logoColor=white" height="40" alt="Gmail: contact"></a>
 </p>
 
 Builds `.deb`, `.rpm`, `.AppImage` and an AUR `PKGBUILD` from a single `build.toml`.
